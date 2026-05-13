@@ -28,18 +28,7 @@ cd ~/vaultwarden-homelab
 git init
 ```
 
-### Step 2: Establish the Security Perimeter
-To ensure encrypted databases and administrative tokens are never pushed to a public repository, create a `.gitignore` file immediately.
-```bash
-nano .gitignore
-```
-Add the following exclusion rules:
-```text
-.env
-vw-data/
-```
-
-### Step 3: Generate the Administrative Token
+### Step 2: Generate the Administrative Token
 Vaultwarden requires a highly secure cryptographic token to access the backend administration panel. Generate this locally and store it as an environment variable.
 ```bash
 openssl rand -base64 48 > .env
@@ -49,7 +38,7 @@ Open the `.env` file (`nano .env`) and format the generated string exactly like 
 ADMIN_TOKEN=your_generated_random_string_here
 ```
 
-### Step 4: Configure the Docker Infrastructure
+### Step 3: Configure the Docker Infrastructure
 Create the deployment configuration. This tells the host how to map the network ports and mount the persistent storage volume.
 ```bash
 nano docker-compose.yml
@@ -72,7 +61,7 @@ services:
       - 8082:80
 ```
 
-### Step 5: Execute the Deployment
+### Step 4: Execute the Deployment
 Pull the latest image and launch the Vaultwarden container in detached mode.
 ```bash
 docker compose up -d
@@ -83,8 +72,8 @@ docker compose up -d
 ## Accessing the Application
 Once the container status is healthy, the application can be accessed securely across the Tailscale network.
 
-* **Primary Web Vault:** `http://100.121.1.51:8082`
-* **Admin Dashboard:** `http://100.121.1.51:8082/admin` *(Requires the token generated in Step 3)*
+* **Primary Web Vault:** `http://(YOUR_TAILSCALE_IP_HERE):8082`
+* **Admin Dashboard:** `http://(YOUR_TAILSCALE_IP_HERE):8082/admin` *(Requires the token generated in Step 3)*
 
 ## Maintenance & Backups
-All encrypted passwords and user data are persistently stored in the local `./vw-data` directory. For disaster recovery, ensure this specific directory is backed up securely.
+All encrypted passwords and user data are persistently stored in the local `./vw-data` directory. For disaster recovery, ensure this specific directory is securely backed up.
