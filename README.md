@@ -1,9 +1,12 @@
-# Vaultwarden Password Manager Deployment
+# Vaultwarden Password Manager: Secure Deployment Guide
 
-This repository documents the infrastructure-as-code and deployment steps for a self-hosted Vaultwarden (Bitwarden-compatible) password manager. It is designed to run securely on a Raspberry Pi 4 utilizing containerization, zero-trust networking, and strict secret management principles.
+This repository contains the infrastructure-as-code and deployment steps for a self-hosted Vaultwarden (Bitwarden-compatible) password manager. It is designed to run securely on a Raspberry Pi 4 utilizing containerization, zero-trust networking, and strict secret management principles.
 
 ## Architecture & Security Overview
 As part of a broader Cybersecurity and Information Assurance homelab portfolio, this deployment emphasizes security best practices:
+* **Encryption at Rest:** All vault data is encrypted using AES-256.
+* **Encryption in Transit:** Full SSL/TLS termination using Tailscale MagicDNS and automated certificates to satisfy the Subtle Crypto API requirements.
+* **Administrative Security:** The `ADMIN_TOKEN` is protected using an Argon2id PHC string, ensuring that even if the configuration file is compromised, the plain-text password remains secure.
 * **Secret Decoupling:** Administrative keys are isolated in a local `.env` file, preventing credential exposure in version control.
 * **Network Isolation:** Bound to port `8082` to cleanly integrate alongside existing DNS sinkhole and media server deployments without conflicts.
 * **Zero-Trust Access:** Remote access is strictly handled via a Tailscale VPN overlay network, keeping the vault completely off the public internet.
@@ -29,7 +32,7 @@ git init
 ```
 
 ### Step 2: Establish the Security Perimeter
-To ensure encrypted databases and administrative tokens are never pushed to a public repository, create a `.gitignore` file immediately.
+To ensure encrypted databases, administrative tokens, and SSL keys are never pushed to a public repository, create a `.gitignore` file immediately.
 ```bash
 nano .gitignore
 ```
@@ -37,37 +40,35 @@ Add the following exclusion rules:
 ```text
 .env
 vw-data/
+certs/
 ```
 
-### Step 3: Generate the Administrative Token
-Vaultwarden requires a highly secure cryptographic token to access the backend administration panel. Generate this locally and store it as an environment variable.
+### Step 3: SSL/TLS Certificate Generation
+Utilize Tailscale to provision valid certificates for the internal MagicDNS domain:
 ```bash
-openssl rand -base64 48 > .env
-```
-Open the `.env` file (`nano .env`) and format the generated string exactly like this:
-```text
-ADMIN_TOKEN=your_generated_random_string_here
+mkdir certs
+sudo tailscale cert --cert-file ./certs/tls.crt --key-file ./certs/tls.key <your-tailscale-domain>
 ```
 
 ### Step 4: Configure the Docker Infrastructure
-Create the deployment configuration. This tells the host how to map the network ports and mount the persistent storage volume.
+Create the deployment configuration. This tells the host how to map the network ports, mount the persistent storage volume, and inject the `ROCKET_TLS` structure.
 ```bash
 nano docker-compose.yml
 ```
 Paste the following service definition:
 ```yaml
-version: '3.8'
-
 services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
     environment:
-      - WEBSOCKET_ENABLED=true
       - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - WEBSOCKET_ENABLED=true
+      - ROCKET_TLS={certs="/ssl/tls.crt",key="/ssl/tls.key"}
     volumes:
       - ./vw-data:/data
+      - ./certs:/ssl:ro
     ports:
       - 8082:80
 ```
@@ -78,13 +79,29 @@ Pull the latest image and launch the Vaultwarden container in detached mode.
 docker compose up -d
 ```
 
+### Step 6: Security Initialization (Argon2 Hash)
+Generate an Argon2 hash for the admin dashboard to replace insecure plain-text tokens.
+```bash
+docker exec -it vaultwarden /vaultwarden hash
+```
+Escape all `$` characters with `$$` and add it to your `.env` file:
+```bash
+nano .env
+# Format: ADMIN_TOKEN=$$argon2id$$v=19$$...
+```
+Restart the container to apply the secure token:
+```bash
+docker compose down
+docker compose up -d
+```
+
 ---
 
 ## Accessing the Application
 Once the container status is healthy, the application can be accessed securely across the Tailscale network.
 
-* **Primary Web Vault:** `http://100.121.1.51:8082`
-* **Admin Dashboard:** `http://100.121.1.51:8082/admin` *(Requires the token generated in Step 3)*
+* **Primary Web Vault:** `https://<tailscale-machine-name>.<tailnet-id>.ts.net:8082`
+* **Admin Dashboard:** `https://<tailscale-machine-name>.<tailnet-id>.ts.net:8082/admin` *(Requires the Argon2-hashed token)*
 
 ## Maintenance & Backups
 All encrypted passwords and user data are persistently stored in the local `./vw-data` directory. For disaster recovery, ensure this specific directory is backed up securely.
