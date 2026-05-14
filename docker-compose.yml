@@ -6,7 +6,9 @@ services:
     environment:
       - ADMIN_TOKEN=${ADMIN_TOKEN}
       - WEBSOCKET_ENABLED=true
+      - ROCKET_TLS={certs="/ssl/tls.crt" ,key="/ssl/tls.key"}
     volumes:
       - ./vw-data:/data
+      - ./certs:/ssl:ro
     ports:
       - 8082:80
