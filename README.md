@@ -31,7 +31,6 @@ cd ~/vaultwarden-homelab
 git init
 ```
 
-<<<<<<< HEAD
 ### Step 2: Establish the Security Perimeter
 To ensure encrypted databases, administrative tokens, and SSL keys are never pushed to a public repository, create a `.gitignore` file immediately.
 ```bash
@@ -46,22 +45,13 @@ certs/
 
 ### Step 3: SSL/TLS Certificate Generation
 Utilize Tailscale to provision valid certificates for the internal MagicDNS domain:
-=======
-### Step 2: Generate the Administrative Token
-Vaultwarden requires a highly secure cryptographic token to access the backend administration panel. Generate this locally and store it as an environment variable.
->>>>>>> b32ac57e3217432d4e97ab385d30b3256fb50613
 ```bash
 mkdir certs
 sudo tailscale cert --cert-file ./certs/tls.crt --key-file ./certs/tls.key <your-tailscale-domain>
 ```
 
-<<<<<<< HEAD
 ### Step 4: Configure the Docker Infrastructure
 Create the deployment configuration. This tells the host how to map the network ports, mount the persistent storage volume, and inject the `ROCKET_TLS` structure.
-=======
-### Step 3: Configure the Docker Infrastructure
-Create the deployment configuration. This tells the host how to map the network ports and mount the persistent storage volume.
->>>>>>> b32ac57e3217432d4e97ab385d30b3256fb50613
 ```bash
 nano docker-compose.yml
 ```
@@ -83,7 +73,7 @@ services:
       - 8082:80
 ```
 
-### Step 4: Execute the Deployment
+### Step 5: Execute the Deployment
 Pull the latest image and launch the Vaultwarden container in detached mode.
 ```bash
 docker compose up -d
@@ -110,13 +100,8 @@ docker compose up -d
 ## Accessing the Application
 Once the container status is healthy, the application can be accessed securely across the Tailscale network.
 
-<<<<<<< HEAD
 * **Primary Web Vault:** `https://<tailscale-machine-name>.<tailnet-id>.ts.net:8082`
 * **Admin Dashboard:** `https://<tailscale-machine-name>.<tailnet-id>.ts.net:8082/admin` *(Requires the Argon2-hashed token)*
-=======
-* **Primary Web Vault:** `http://(YOUR_TAILSCALE_IP_HERE):8082`
-* **Admin Dashboard:** `http://(YOUR_TAILSCALE_IP_HERE):8082/admin` *(Requires the token generated in Step 3)*
->>>>>>> b32ac57e3217432d4e97ab385d30b3256fb50613
 
 ## Maintenance & Backups
-All encrypted passwords and user data are persistently stored in the local `./vw-data` directory. For disaster recovery, ensure this specific directory is securely backed up.
+All encrypted passwords and user data are persistently stored in the local `./vw-data` directory. For disaster recovery, ensure this specific directory is backed up securely.
